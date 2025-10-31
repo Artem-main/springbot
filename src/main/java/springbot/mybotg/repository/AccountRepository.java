@@ -12,20 +12,26 @@ import java.util.Optional;
 
 public interface AccountRepository extends JpaRepository<Account, Long> {
 
-    @NotNull
-    @Query("SELECT a FROM Account a WHERE a.id = :chatId")
-    Optional<Account> findById(@NotNull @Param("chatId") Long chatId);
 
-    @Query("SELECT a.sendUserText FROM Account a WHERE a.id = :chatId")
+    @NotNull Optional<Account> findById (@NotNull Long chatId);
+
+    @Query("SELECT a.nameExercise FROM Account a WHERE a.chatId = :chatId")
     String getUserText(@Param("chatId") Long chatId);
 
-    @Query("SELECT a.accountStatus FROM Account a WHERE a.id = :chatId")
+    @Query("SELECT a.accountStatus FROM Account a WHERE a.chatId = :chatId")
     String checkAccountPremium (@Param("chatId") Long chatId);
 
     @Modifying
     @Transactional
-    @Query("UPDATE Account a SET a.sendUserText = :text WHERE a.id = :chatId")
-    void updateUserText(@Param("chatId") Long chatId, @Param("text") String text);
+    @Query("UPDATE Account a SET a.nameExercise = :text WHERE a.chatId = :chatId AND a.muscleGroup = :muscleGroup")
+    void setNameExercise(@Param("chatId") Long chatId, @Param("text") String text, @Param("muscleGroup") String muscleGroup);
+
+    @Transactional
+    @Query("UPDATE Account a SET a.weightExercise = :weight WHERE a.chatId = :chatId")
+    void setWeightExercise (@Param("chatId") Long chatId, @Param ("weight") int weight);
+
+
+    Optional<Account> findByChatIdAndMuscleGroupAndNameExercise(Long chatId, String muscleGroup, String nameExercise);
 }
 
 

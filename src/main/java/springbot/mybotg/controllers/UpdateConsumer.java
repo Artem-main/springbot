@@ -15,15 +15,23 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
+import springbot.mybotg.constants.MuscleGroupButton;
 import springbot.mybotg.config.BotConfig;
+import springbot.mybotg.models.Account;
+import springbot.mybotg.models.Exercise;
 import springbot.mybotg.service.AccountService;
+import springbot.mybotg.service.DataImportService;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
     private final Logger logger = LoggerFactory.getLogger(UpdateConsumer.class);
     private final TelegramClient telegramClient;
+
+
 
     public UpdateConsumer(BotConfig botConfig) {
         logger.info("Initializing UpdateConsumer with token: {}", botConfig.getToken());
@@ -37,6 +45,9 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
     @Autowired
     public AccountService accountService;
 
+    @Autowired
+    public DataImportService dataImportService;
+
     @SneakyThrows
     @Override
     public void consume(Update update) {
@@ -46,26 +57,139 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
             String name = update.getMessage().getFrom().getUserName();
 
             if (text.equals("/start")) {
-                accountService.saveAccount(chatId,name);
                 sendMainMenu(chatId);
             } else {
-                accountService.saveUserText(chatId, text);
-                sendMessage(chatId, "Ваш текст сохранен");
+                sendMessage(chatId, "Ваш текст " + text);
             }
         } else if (update.hasCallbackQuery()) {
-            handleCallbackQuery(update.getCallbackQuery());
+            handleShowAndSaveExercises(update.getCallbackQuery());
         }
     }
 
-    private void handleCallbackQuery(CallbackQuery callbackQuery) throws TelegramApiException {
+    private void handleShowAndSaveExercises(CallbackQuery callbackQuery) throws TelegramApiException {
         var data = callbackQuery.getData();
         var chatId = callbackQuery.getFrom().getId();
-//        var user = callbackQuery.getFrom();
+        var userName = callbackQuery.getFrom().getUserName();
         switch (data) {
-            case "button1" -> handleCheckAccountPremium(chatId);
+            case "button1" -> handleViewExerciseMenu(chatId, data);
             case "getText" -> handleGetTextCommand(chatId);
+//            case "createTraining" -> handleCreateExercises (chatId);
+            case "viewMuscleGroup" -> handleSetMuscleGroup(chatId);
+            case "chest",
+                 "legs",
+                 "backMuscle",
+                 "shoulders",
+                 "triceps",
+                 "biceps"-> handleSaveMuscleGroup(chatId, userName, data);
+            default -> handleShowAndSaveExercises(data,chatId);
         }
     }
+
+    @SneakyThrows
+    private void handleSaveMuscleGroup(Long chatId, String userName, String muscleGroup) {
+        for (MuscleGroupButton button : MuscleGroupButton.values()) {
+            if (button.getNameCallbackData().equals(muscleGroup)) {
+                muscleGroup = button.getNameGroup();
+            }
+        }
+
+        List<Exercise> exercises = dataImportService.getTraining(muscleGroup);
+
+        List<InlineKeyboardRow> rows = new ArrayList<>();
+        StringBuilder response = new StringBuilder("Упражнения для: " + muscleGroup + "\n");
+
+        for (Exercise exercise : exercises) {
+            response.append(exercise.getExercise()).append("\n");
+            String callbackData = "exercise_" + exercise.getId();
+
+            accountService.saveOrUpdateExercise(chatId, userName, muscleGroup, exercise.getExercise());
+
+            InlineKeyboardButton menuButton = InlineKeyboardButton.builder()
+                    .text(exercise.getExercise())
+                    .callbackData(callbackData)
+                    .build();
+
+            InlineKeyboardRow row = new InlineKeyboardRow();
+            row.add(menuButton);
+            rows.add(row);
+        }
+
+        InlineKeyboardMarkup keyboard = InlineKeyboardMarkup.builder()
+                .keyboard(rows)
+                .build();
+
+        SendMessage sendMessage = SendMessage.builder()
+                .chatId(chatId)
+                .text("Выберите упражнение")
+                .replyMarkup(keyboard)
+                .build();
+        telegramClient.execute(sendMessage);
+    }
+
+    @SneakyThrows
+    public void handleShowAndSaveExercises(String callbackData, Long chatId) {
+        if (callbackData.startsWith("exercise_")) {
+            Long exerciseId = Long.parseLong(callbackData.replace("exercise_", ""));
+            Exercise exercise = dataImportService.findExerciseById(exerciseId);
+
+            SendMessage response = SendMessage.builder()
+                    .chatId(chatId)
+                    .text("Вы выбрали упражнение: " + exercise.getExercise())
+                    .build();
+            telegramClient.execute(response);
+        }
+    }
+
+    @SneakyThrows
+    private void handleViewExerciseMenu (Long chatId, String muscleGroup) {
+        List<InlineKeyboardRow> rows = new ArrayList<>();
+
+
+        // Формируем клавиатуру
+        InlineKeyboardMarkup keyboard = InlineKeyboardMarkup.builder()
+                .keyboard(rows)
+                .build();
+
+        // Отправляем сообщение с клавиатурой
+        SendMessage sendMessage = SendMessage.builder()
+                .chatId(chatId)
+                .text("Выберите упражнение для группы «" + muscleGroup + "»:")
+                .replyMarkup(keyboard)
+                .build();
+
+        telegramClient.execute(sendMessage);
+    }
+
+    @SneakyThrows
+    private void handleSetMuscleGroup(Long chatId) {
+        List<InlineKeyboardRow> rows = new ArrayList<>();
+
+        for (MuscleGroupButton button : MuscleGroupButton.values()) {
+            // Создаём кнопку
+            InlineKeyboardButton menuButton = InlineKeyboardButton.builder()
+                    .text(button.getNameGroup())
+                    .callbackData(button.getNameCallbackData())
+                    .build();
+
+            // Добавляем кнопку в строку (создаём новую строку для каждой кнопки)
+            InlineKeyboardRow row = new InlineKeyboardRow();
+            row.add(menuButton);
+            rows.add(row);
+        }
+
+        // Собираем клавиатуру
+        InlineKeyboardMarkup keyboard = InlineKeyboardMarkup.builder()
+                .keyboard(rows)
+                .build();
+
+        SendMessage sendMessage = SendMessage.builder()
+                .chatId(chatId)
+                .text("Выберите группу мышц")
+                .replyMarkup(keyboard)
+                .build();
+        telegramClient.execute(sendMessage);
+    }
+
 
     private void handleGetTextCommand(Long chatId) throws TelegramApiException {
         try {
@@ -93,12 +217,6 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
         }
     }
 
-
-    @SneakyThrows
-    private void sendMenuButton1(Long chatId) {
-        sendMessage(chatId, "You click 1 button");
-    }
-
     private void sendMessage(Long chatId, String text) throws TelegramApiException {
         SendMessage sendMessage = SendMessage.builder()
                 .text(text)
@@ -119,14 +237,26 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
                 .callbackData("button1")
                 .build();
 
+        var mainMenuButton3 = InlineKeyboardButton.builder()
+                .text("Создать тренировку")
+                .callbackData("createTraining")
+                .build();
+
         var mainMenuButton2 = InlineKeyboardButton.builder()
                 .text("Получить текст")
                 .callbackData("getText")
                 .build();
 
+        var pingButton = InlineKeyboardButton.builder() // Новая кнопка для ping
+                .text("Меню группы мышц")
+                .callbackData("viewMuscleGroup")
+                .build();
+
         List<InlineKeyboardRow> keyboardRows = List.of(
                 new InlineKeyboardRow(mainMenuButton),
-                new InlineKeyboardRow(mainMenuButton2)
+                new InlineKeyboardRow(mainMenuButton2),
+                new InlineKeyboardRow(mainMenuButton3),
+                new InlineKeyboardRow(pingButton)
         );
 
         InlineKeyboardMarkup markup = new InlineKeyboardMarkup(keyboardRows);

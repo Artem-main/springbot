@@ -11,40 +11,42 @@ import lombok.Setter;
 public class Account {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "chat_id", nullable = false)
+    private Long chatId;
 
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "send_user_text", nullable = false)
-    private String sendUserText;
-
     @Column(name = "account_status")
     private String accountStatus;
 
+    @Column(name = "name_exercise")
+    private String nameExercise;
 
-    public Account(long id, String name, String sendUserText, String accountStatus) {
-        this.id = id;
+    @Column(name = "weight_exercise")
+    private int weightExercise;
+
+    @Column (name = "muscle_Group")
+    private String muscleGroup;
+
+
+    public Account(long chatId, String name, String muscleGroup, String nameExercise, int weightExercise, String accountStatus) {
+        this.chatId = chatId;
         this.name = name;
-        this.sendUserText = sendUserText;
+        this.nameExercise = nameExercise;
+        this.muscleGroup = muscleGroup;
+        this.weightExercise = weightExercise;
         this.accountStatus = accountStatus;
     }
 
-    public Account(Long id, String name, String sendUserText) {
-        this.id = id;
+    public Account(Long chatId, String name) {
+        this.chatId = chatId;
         this.name = name;
-        this.sendUserText = sendUserText;
     }
 
     public Account() {
-    }
-
-    @Override
-    public String toString() {
-        return "Account{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", sendUserText='" + sendUserText + '\'' +
-                '}';
     }
 }
