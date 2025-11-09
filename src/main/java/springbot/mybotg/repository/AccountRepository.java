@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 import springbot.mybotg.models.Account;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface AccountRepository extends JpaRepository<Account, Long> {
@@ -19,19 +20,20 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
     String getUserText(@Param("chatId") Long chatId);
 
     @Query("SELECT a.accountStatus FROM Account a WHERE a.chatId = :chatId")
-    String checkAccountPremium (@Param("chatId") Long chatId);
+    Optional <String> checkAccountPremium (@Param("chatId") Long chatId);
 
     @Modifying
     @Transactional
-    @Query("UPDATE Account a SET a.nameExercise = :text WHERE a.chatId = :chatId AND a.muscleGroup = :muscleGroup")
-    void setNameExercise(@Param("chatId") Long chatId, @Param("text") String text, @Param("muscleGroup") String muscleGroup);
+    @Query("UPDATE Account a SET a.weightExercise = :weight WHERE a.chatId = :chatId AND a.nameExercise = :nameExercise")
+    void setWeightExercise (@Param("chatId") Long chatId, @Param ("weight") int weight, @Param("nameExercise") String nameExercise);
 
-    @Transactional
-    @Query("UPDATE Account a SET a.weightExercise = :weight WHERE a.chatId = :chatId")
-    void setWeightExercise (@Param("chatId") Long chatId, @Param ("weight") int weight);
-
+    @Query("SELECT a.weightExercise FROM Account a WHERE a.chatId = :chatId AND a.nameExercise = :nameExercise")
+    Optional<Integer>  getWeightExercise (@Param("chatId") Long chatId, @Param("nameExercise") String nameExercise);
 
     Optional<Account> findByChatIdAndMuscleGroupAndNameExercise(Long chatId, String muscleGroup, String nameExercise);
+
+    @Query("SELECT a.nameExercise FROM Account a WHERE a.chatId = :chatId AND a.muscleGroup = :muscleGroup")
+    List <String> viewAllExerciseThisUser (@Param("chatId") Long chatId, @Param("muscleGroup") String muscleGroup);
 }
 
 

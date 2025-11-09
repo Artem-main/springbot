@@ -7,8 +7,8 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "account")
-public class Account {
+@Table(name = "account_premium")
+public class AccountPremium {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,9 +19,6 @@ public class Account {
 
     @Column(name = "name", nullable = false)
     private String name;
-
-    @Column(name = "account_status")
-    private String accountStatus;
 
     @Column(name = "name_exercise")
     private String nameExercise;
@@ -35,22 +32,21 @@ public class Account {
     @Column (name = "number_sets_and_repeat")
     private String numberSetsAndRepeat;
 
-
-    public Account(long chatId, String name, String muscleGroup, String nameExercise, int weightExercise, String accountStatus, String numberSetsAndRepeat) {
+    public AccountPremium(Long id, Long chatId, String name, String nameExercise, int weightExercise, String muscleGroup, String numberSetsAndRepeat) {
+        this.id = id;
         this.chatId = chatId;
         this.name = name;
         this.nameExercise = nameExercise;
-        this.muscleGroup = muscleGroup;
         this.weightExercise = weightExercise;
-        this.accountStatus = accountStatus;
+        this.muscleGroup = muscleGroup;
         this.numberSetsAndRepeat = numberSetsAndRepeat;
     }
 
-    public Account(Long chatId, String name) {
+    public AccountPremium(Long chatId, String name) {
         this.chatId = chatId;
         this.name = name;
     }
 
-    public Account() {
-    }
+    public AccountPremium () {}
+
 }
